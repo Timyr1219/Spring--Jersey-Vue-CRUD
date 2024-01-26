@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue.js CRUD Example</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+
+<div id="app" class="container mt-5">
+    <h2>Продукт CRUD</h2>
+
+    <div>
+        <button class="btn btn-primary mb-2" @click="showAddForm">Добавить Продукт</button>
+    </div>
+
+    <form v-if="showForm" @submit.prevent="saveProduct">
+        <div class="form-group">
+            <label for="productName">Названия:</label>
+            <input type="text" class="form-control" id="productName" v-model="newProduct.name" required>
+        </div>
+        <div class="form-group">
+            <label for="productPrice">Цена:</label>
+            <input type="number" class="form-control" id="productPrice" v-model="newProduct.price" required>
+        </div>
+        <div class="form-group" v-if="productStatuses.length">
+            <label for="productStatus">Статус:</label>
+            <select class="form-control" id="productStatus" v-model="newProduct.status.id" required>
+                <option v-for="status in productStatuses" :key="status.id" :value="status.id">{{ status.status }}</option>
+            </select>
+        </div>
+        <div class="form-group" v-if="productTypes.length">
+            <label for="productType">Тип:</label>
+            <select class="form-control" id="productType" v-model="newProduct.type.id" required>
+                <option v-for="type in productTypes" :key="type.id" :value="type.id">{{ type.type }}</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Добавить</button>
+    </form>
+
+    <table class="table mt-3">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Названия</th>
+            <th>Цена</th>
+            <th>Статус</th>
+            <th>Тип</th>
+            <th>Действия</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="product in products" :key="product.id">
+            <td>{{ product.id }}</td>
+            <td>{{ product.name }}</td>
+            <td>{{ product.price }}</td>
+            <td>{{ product.status.status }}</td>
+            <td>{{ product.type.type }}</td>
+            <td>
+                <button class="btn btn-info btn-sm" @click="editProduct(product)">Редактировать</button>
+                <button class="btn btn-danger btn-sm" @click="deleteProduct(product.id)">Удалить</button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div v-if="editMode">
+        <h3>Редактировать Продукт</h3>
+        <div class="form-group">
+            <label for="editProductName">Названия:</label>
+            <input type="text" class="form-control" id="editProductName" v-model="editedProduct.name" required>
+        </div>
+        <div class="form-group">
+            <label for="editProductPrice">Цена:</label>
+            <input type="number" class="form-control" id="editProductPrice" v-model="editedProduct.price" required>
+        </div>
+        <div class="form-group">
+            <label for="editProductStatus">Статус:</label>
+            <select class="form-control" id="editProductStatus" v-model="editedProduct.status" required>
+                <option v-for="status in productStatuses" :key="status.id" :value="status">{{ status.status }}</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="editProductType">Тип:</label>
+            <select class="form-control" id="editProductType" v-model="editedProduct.type" required>
+                <option v-for="type in productTypes" :key="type.id" :value="type">{{ type.type }}</option>
+            </select>
+        </div>
+        <button class="btn btn-success" @click="updateProduct">Сохранить</button>
+        <button class="btn btn-secondary" @click="exitEditMode">Закрыть</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            products: [],
+            newProduct: {
+                name: '',
+                price: 0,
+                status: { id: null },
+                type: { id: null }
+            },
+            showForm: false,
+            productStatuses: [],
+            productTypes: [],
+            editMode: false,
+            editedProduct: { id: null, name: '', price: 0, status: { id: null }, type: { id: null } }
+        },
+        mounted() {
+            this.fetchProducts();
+            this.fetchProductStatuses();
+            this.fetchProductTypes();
+        },
+        methods: {
+            fetchProducts() {
+                axios.get('http://localhost:8990/api/products')
+                    .then(response => {
+                        this.products = response.data;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching products:', error);
+                    });
+            },
+            fetchProductStatuses() {
+                axios.get('http://localhost:8990/api/productStatuses')
+                    .then(response => {
+                        this.productStatuses = response.data;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching product statuses:', error);
+                    });
+            },
+            fetchProductTypes() {
+                axios.get('http://localhost:8990/api/productTypes')
+                    .then(response => {
+                        this.productTypes = response.data;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching product types:', error);
+                    });
+            },
+            showAddForm() {
+                this.showForm = true;
+            },
+            saveProduct() {
+                axios.post('http://localhost:8990/api/products', this.newProduct)
+                    .then(response => {
+                        this.fetchProducts();
+                        this.resetForm();
+                    })
+                    .catch(error => {
+                        console.error('Error adding product:', error);
+                    });
+            },
+            resetForm() {
+                this.newProduct = {
+                    name: '',
+                    price: 0,
+                    status: { id: null },
+                    type: { id: null }
+                };
+                this.showForm = false;
+            },
+            editProduct(product) {
+                console.log('Editing product:', product);
+                this.editMode = true;
+                console.log('Edit mode:', this.editMode);
+                this.editedProduct = {
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    status: product.status.id,
+                    type: product.type.id
+                };
+                console.log('Edited product:', this.editedProduct);
+                console.log('Show modal:', this.editMode);
+            },
+
+            updateProduct() {
+                console.log('Updating product:', this.editedProduct);
+                axios.put(`http://localhost:8990/api/products/${this.editedProduct.id}`, this.editedProduct)
+                    .then(response => {
+                        this.fetchProducts();
+                        this.exitEditMode();
+                    })
+                    .catch(error => {
+                        console.error('Error updating product:', error);
+                    });
+            },
+            exitEditMode() {
+                this.editMode = false;
+                this.editedProduct = { id: null, name: '', price: 0, status: { id: null }, type: { id: null } };
+            },
+            deleteProduct(productId) {
+                axios.delete(`http://localhost:8990/api/products/${productId}`)
+                    .then(response => {
+                        this.fetchProducts();
+                    })
+                    .catch(error => {
+                        console.error('Error deleting product:', error);
+                    });
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
+<style>
+    .modal {
+        z-index: 10000;
+    }
+</style>
